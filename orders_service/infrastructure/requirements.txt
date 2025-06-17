@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+requests
+python-multipart
+sqlalchemy
+asyncpg
+aio-pika
+pytest
+pytest-asyncio
+httpx
+pytest-cov
+

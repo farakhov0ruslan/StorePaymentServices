@@ -1,0 +1,68 @@
+version: "3.9"
+services:
+  order_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: order_pass
+      POSTGRES_DB: order_db
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+
+  payment_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_pass
+      POSTGRES_DB: payment_db
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  order_service:
+    build: ./orders_service
+    depends_on:
+      - order_db
+      - rabbitmq
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://order_user:order_pass@order_db:5432/order_db
+      BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+#    ports:
+#      - "8001:80"
+
+  payment_service:
+    build: ./payments_service
+    depends_on:
+      - payment_db
+      - rabbitmq
+    environment:
+      DATABASE_URL: postgresql+asyncpg://payment_user:payment_pass@payment_db:5432/payment_db
+      BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+#    ports:
+#      - "8002:80"
+
+  api_gateway:
+    build: ./api_gateway
+    depends_on:
+      - order_service
+      - payment_service
+    environment:
+      ORDER_SERVICE_URL: http://order_service:80
+      PAYMENT_SERVICE_URL: http://payment_service:80
+    ports:
+      - "8000:80"
+
+volumes:
+  order_db_data:
+  payment_db_data:
