@@ -1,13 +1,13 @@
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from typing import List
 from payments_service.presentation.routes import router
 from payments_service.infrastructure.messaging import start_payment_consumer, start_outbox_publisher
 from payments_service.infrastructure.models import Base
 from payments_service.infrastructure.db import engine
-
 from payments_service.logger import get_logger
 
+from sqlalchemy.exc import SQLAlchemyError
 logger = get_logger(__name__, filename="main.log")
 app = FastAPI()
 _tasks: List[asyncio.Task] = []
@@ -33,3 +33,22 @@ async def on_shutdown():
         t.cancel()
     await asyncio.gather(*_tasks, return_exceptions=True)
     logger.info("🔴 All background tasks stopped")
+
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """
+    Простой endpoint для проверки:
+    - API отвечает
+    - База данных доступна
+    """
+    # Проверим соединение с базой (asyncpg)
+    try:
+        async with engine.begin() as conn:
+            # выполнит простой SQL — если DB недоступна, упадёт
+            await conn.execute("SELECT 1")
+    except SQLAlchemyError as e:
+        # если не смогли подключиться — вернём 503
+        raise HTTPException(status_code=503, detail="DB connection failed")
+
+    return {"status": "ok"}

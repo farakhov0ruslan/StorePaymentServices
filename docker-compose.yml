@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   order_db:
     image: postgres:15-alpine
@@ -8,6 +9,11 @@ services:
       POSTGRES_DB: order_db
     volumes:
       - order_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_user -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   payment_db:
     image: postgres:15-alpine
@@ -17,40 +23,50 @@ services:
       POSTGRES_DB: payment_db
     volumes:
       - payment_db_data:/var/lib/postgresql/data
-
-  rabbitmq:
-    image: rabbitmq:3-management
     healthcheck:
-      test: [ "CMD", "rabbitmqctl", "status" ]
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   order_service:
     build: ./orders_service
     depends_on:
-      - order_db
-      - rabbitmq
-
+      order_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://order_user:order_pass@order_db:5432/order_db
       BROKER_URL: amqp://guest:guest@rabbitmq:5672/
-#    ports:
-#      - "8001:80"
+    # Чтобы открыть наружный порт, раскомментируйте:
+    # ports:
+    #   - "8001:80"
 
   payment_service:
     build: ./payments_service
     depends_on:
-      - payment_db
-      - rabbitmq
+      payment_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://payment_user:payment_pass@payment_db:5432/payment_db
       BROKER_URL: amqp://guest:guest@rabbitmq:5672/
-#    ports:
-#      - "8002:80"
+    # Чтобы открыть наружный порт, раскомментируйте:
+    # ports:
+    #   - "8002:80"
 
   api_gateway:
     build: ./api_gateway
@@ -62,6 +78,7 @@ services:
       PAYMENT_SERVICE_URL: http://payment_service:80
     ports:
       - "8000:80"
+    # при необходимости можно добавить healthcheck для проверки gateway
 
 volumes:
   order_db_data:

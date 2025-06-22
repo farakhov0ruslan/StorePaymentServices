@@ -14,6 +14,6 @@ RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 EXPOSE 80
 
-ENTRYPOINT ["wait-for-it.sh", "-t", "60", "rabbitmq:5672", "--strict", "--"]
+#ENTRYPOINT ["wait-for-it.sh", "-t", "60", "rabbitmq:5672", "--strict", "--"]
 
 CMD ["uvicorn", "payments_service.main:app", "--host", "0.0.0.0", "--port", "80"]
