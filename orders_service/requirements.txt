@@ -10,4 +10,7 @@ pytest
 pytest-asyncio
 httpx
 pytest-cov
+grpcio
+grpcio-tools
+protobuf
 

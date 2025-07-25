@@ -1,0 +1,13 @@
+from google.protobuf import message
+
+
+class CreateOrderRequest(message.Message): ...
+
+
+class Order(message.Message): ...
+
+
+class GetOrderRequest(message.Message): ...
+
+
+class ListOrdersResponse(message.Message): ...

@@ -50,8 +50,10 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://order_user:order_pass@order_db:5432/order_db
       BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      GRPC_PORT: 50051
     # Чтобы открыть наружный порт, раскомментируйте:
-    # ports:
+    ports:
+      - "50051:50051"
     #   - "8001:80"
 
   payment_service:
@@ -76,6 +78,7 @@ services:
     environment:
       ORDER_SERVICE_URL: http://order_service:80
       PAYMENT_SERVICE_URL: http://payment_service:80
+      ORDER_SERVICE_GRPC: order_service:50051
     ports:
       - "8000:80"
     # при необходимости можно добавить healthcheck для проверки gateway

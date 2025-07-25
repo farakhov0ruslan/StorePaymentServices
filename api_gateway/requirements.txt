@@ -4,4 +4,7 @@ pydantic
 requests
 httpx
 python-multipart
+grpcio
+protobuf
+
 

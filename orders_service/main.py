@@ -9,8 +9,8 @@ from orders_service.infrastructure.messaging import (
     start_outbox_publisher,
     start_payment_result_consumer,
 )
+from orders_service.grpc.server import serve_grpc
 from sqlalchemy.exc import SQLAlchemyError
-
 
 logger = get_logger(__name__, filename="main.log")
 
@@ -31,6 +31,9 @@ async def on_startup():
     t2 = asyncio.create_task(start_payment_result_consumer(), name="payment_result_consumer")
     _tasks.extend([t1, t2])
     logger.info("✅ Background tasks started: outbox_publisher, payment_result_consumer")
+    # запускаем gRPC параллельно FastAPI
+    app.state.grpc_server = await serve_grpc()
+    logger.info("✅ gRPC server start!")
 
 
 @app.on_event("shutdown")
@@ -41,6 +44,10 @@ async def on_shutdown():
     # дождёмся, чтобы все они нормально закрыли соединения
     await asyncio.gather(*_tasks, return_exceptions=True)
     logger.info("🔴 All background tasks stopped")
+
+    await app.state.grpc_server.stop(0)
+    logger.info("🔴 gRPC server stop")
+
 
 @app.get("/health", tags=["Health"])
 async def health_check():
