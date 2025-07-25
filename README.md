@@ -79,6 +79,30 @@
   * `order_created`  — от Order → Payments
   * `payment_success` / `payment_failed` — от Payments → Order
 * Все publish/consume выполняются через `aio_pika.connect_robust` и `default_exchange`.
+* 
+## Интеграция gRPC
+
+Помимо HTTP/REST API, в проекте реализовано **внутреннее взаимодействие по gRPC** между сервисами:
+
+- **gRPC‑роутер API Gateway** (`/grpc/orders`):
+  - `POST /grpc/orders/` — создание заказа через gRPC.
+  - `GET  /grpc/orders/` — получение списка заказов через gRPC.
+  - `GET  /grpc/orders/{id}` — получение заказа по ID через gRPC.
+
+- **gRPC‑сервер Order Service**:
+  - Сервис `OrderService` с методами:
+    - `CreateOrder(CreateOrderRequest) returns (Order)`
+    - `GetOrder(GetOrderRequest) returns (Order)`
+    - `ListOrders(Empty) returns (ListOrdersResponse)`
+  - Запускается на порту `50051` параллельно с HTTP API.
+- **Proto‑файлы**:
+  - `orders_service/protos/order_service.proto`
+  - Используйте `protoc` и `grpc_tools` для генерации Python‑stub’ов (`*_pb2.py`, `*_pb2_grpc.py`).
+- **Конфигурация**:
+  - В API Gateway включается через переменные окружения:
+    ```bash
+    ORDER_SERVICE_GRPC=order-service:50051
+    ```
 
 ## Запуск всех сервисов
 
@@ -97,6 +121,12 @@
    ```bash
    docker-compose up --build
    ```
+5. затем перейдите по адресу: http://localhost:8000/docs
+Протестировать основную логику можно так.
+- Создать paymant баланс
+- Начать создавать заказы с user_id, связанный с paymant баланс
+- В зависимости от условий заказы будут отклонены или оплачены(например если нет денег, заказ сначала будет в обработке, а немного позже станет failed)
+- Действия с заказами также можно выполнить и через gRPC
 
 ## Тестирование
 
@@ -115,7 +145,7 @@
 
  - Перейти в папку сервиса и запустить тесты:
 ```bash
-cd payments_service
+cd payment_service
 pytest --maxfail=1 --disable-warnings -q
 ```
 -  Зайти в контейнер Order Service:
